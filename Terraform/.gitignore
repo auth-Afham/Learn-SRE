@@ -1,0 +1,21 @@
+# Ignore Terraform's working directory
+.terraform/
+
+# Ignore the Terraform lock file
+terraform.lock.hcl
+
+# Ignore the state files
+terraform.tfstate
+terraform.tfstate.backup
+
+# Ignore Terraform plan files
+*.tfplan
+
+# Ignore any local binary files like downloaded Terraform versions
+terraform_*.zip
+
+# Optional: Ignore any terraform state directory for versioning
+terraform.tfstate.d/
+
+# Ignore crash dumps (in case of any unexpected termination)
+erl_crash.dump
