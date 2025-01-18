@@ -1,0 +1,144 @@
+#!/bin/bash
+
+# Exit on error
+set -e
+
+echo "Git hook triggered!"
+
+# Configurations
+FORBIDDEN_FILES=(".env" "config/secrets.yaml" "credentials.json")
+FORBIDDEN_EXTENSIONS=("*.key" "*.pem" "*.crt")
+SENSITIVE_PATTERNS="(password=|api_key=|secret=|AWS_ACCESS_KEY_ID=|AWS_SECRET_ACCESS_KEY=|PRIVATE_KEY)"
+IGNORE_FILES=(
+    ".githooks/pre-commit" 
+    ".githooks/pre-push"
+    "node_modules/"
+    "build/"
+    "*.log"
+    ".DS_Store"  # macOS
+    "Thumbs.db"  # Windows
+    "__pycache__/"
+    "*.pyc"
+    "*.pyo"
+    "*.pyd"
+    "npm-debug.log*"
+    "yarn-debug.log*"
+    "yarn-error.log*"
+    ".idea/"
+    ".vscode/"
+    "temp/"
+    "somefile.txt"
+)
+MAX_SIZE=5000000 # 5 MB in bytes
+
+# Track if any checks failed
+CHECKS_FAILED=0
+
+# Function: Check if a file is in the ignore list
+is_ignored_file() {
+    local file="$1"
+    for ignore_file in "${IGNORE_FILES[@]}"; do
+        if [[ "$file" == "$ignore_file" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Helper: Check forbidden files
+check_forbidden_files() {
+    local files
+    mapfile -t files < <(git diff --cached --name-only)
+    
+    for file in "${FORBIDDEN_FILES[@]}"; do
+        for staged_file in "${files[@]}"; do
+            if [[ "$staged_file" == "$file" ]]; then
+                echo "❌ ERROR: Attempt to commit sensitive file: $file"
+                echo "Please remove this file from the staging area or add it to your .gitignore."
+                CHECKS_FAILED=1
+            fi
+        done
+    done
+}
+
+# Helper: Check forbidden extensions
+check_forbidden_extensions() {
+    local files
+    mapfile -t files < <(git diff --cached --name-only)
+    
+    for extension in "${FORBIDDEN_EXTENSIONS[@]}"; do
+        for file in "${files[@]}"; do
+            if [[ "$file" == $extension ]] && ! is_ignored_file "$file"; then
+                echo "❌ ERROR: Attempt to commit file with sensitive extension: $extension"
+                echo "Please remove this file from the staging area or add it to your .gitignore."
+                CHECKS_FAILED=1
+            fi
+        done
+    done
+}
+
+# Helper: Check sensitive patterns
+check_sensitive_patterns() {
+    local files
+    mapfile -t files < <(git diff --cached --name-only)
+    
+    for file in "${files[@]}"; do
+        if [[ -f "$file" ]] && ! is_ignored_file "$file"; then
+            if grep -qE "$SENSITIVE_PATTERNS" "$file"; then
+                echo "❌ ERROR: Sensitive information detected in file: $file"
+                CHECKS_FAILED=1
+            fi
+        fi
+    done
+}
+
+# Helper: Check large files
+check_large_files() {
+    local files
+    mapfile -t files < <(git diff --cached --name-only)
+    
+    for file in "${files[@]}"; do
+        if [[ -f "$file" ]] && ! is_ignored_file "$file"; then
+            local size
+            size=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file" 2>/dev/null)
+            if [[ ${size:-0} -gt $MAX_SIZE ]]; then
+                echo "❌ ERROR: File $file is too large to commit (over 5MB)."
+                CHECKS_FAILED=1
+            fi
+        fi
+    done
+}
+
+# Main: Run checks for both pre-commit and pre-push
+run_checks() {
+    check_forbidden_files
+    check_forbidden_extensions
+    check_sensitive_patterns
+    check_large_files
+}
+
+# Pre-Push specific logic
+run_pre_push_checks() {
+    echo "Running pre-push hook to scan for sensitive information..."
+    check_sensitive_patterns
+    
+    if [[ $CHECKS_FAILED -eq 0 ]]; then
+        echo "✅ Pre-push hook passed. Proceeding with push..."
+    fi
+}
+
+# Entry point
+if [[ "${1:-}" == "--pre-push" ]]; then
+    run_pre_push_checks
+else
+    run_checks
+fi
+
+# Final check and exit
+if [[ $CHECKS_FAILED -eq 1 ]]; then
+    echo "❌ Checks failed. Operation aborted."
+    exit 1
+else
+    echo "✅ All checks passed. Proceeding with the operation."
+    exit 0
+fi

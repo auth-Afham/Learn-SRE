@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-express-app
+  labels:
+    app: my-express-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: my-express-app
+  template:
+    metadata:
+      labels:
+        app: my-express-app
+    spec:
+      containers:
+      - name: my-express-app
+        image: ai-afham/my-express-app:latest
+        ports:
+        - containerPort: 3000

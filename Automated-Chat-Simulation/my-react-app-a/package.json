@@ -1,5 +1,5 @@
 {
-  "name": "my-react-app",
+  "name": "my-react-app-b",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -34,10 +34,10 @@
     ]
   },
   "overrides": {
-    "react-scripts": {
-      "@svgr/webpack": "8.1.0",
-      "typescript": "4.9.5",
-      "postcss": "8.4.38"
-    }
+    "nth-check": "^2.0.1",
+    "postcss": "^8.4.31",
+    "css-select": "^4.2.1",
+    "svgo": "^2.8.0",
+    "resolve-url-loader": "^5.0.0"
   }
 }

@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-react-app-a
+  labels:
+    app: my-react-app-a
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: my-react-app-a
+  template:
+    metadata:
+      labels:
+        app: my-react-app-a
+    spec:
+      containers:
+      - name: my-react-app-a
+        image: ai-afham/my-react-app-a:latest
+        ports:
+        - containerPort: 3000
